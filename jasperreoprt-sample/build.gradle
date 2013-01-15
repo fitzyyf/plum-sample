@@ -1,0 +1,195 @@
+def langs = ['java']
+langs.each {
+    apply plugin : it
+}
+apply plugin: 'war'
+apply plugin:'maven'
+apply plugin:'idea'
+apply plugin : 'jetty'
+
+group = 'org.yfyang.osy.jasperreports-sample'
+version = '0.0.1'
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+httpPort = 3000
+
+def encoding = {it.encoding = 'UTF-8'}
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+
+    mavenRepo name: "jasperreports-maven",url : "http://jasperreports.sourceforge.net/maven2"
+	mavenRepo name: "ibiblio-maven",url:"http://mirrors.ibiblio.org/maven2/"
+}
+
+
+
+dependencies {
+  compile 'net.sf.jasperreports:jasperreports:5.0.1'
+	compile 'net.sf.jasperreports:jasperreports-fonts:5.0.0'
+	compile 'org.springframework:spring:2.5.6'
+	compile 'org.springframework:spring-tx:2.5.6'
+	compile 'org.springframework:spring-aop:2.5.6'
+	compile 'org.springframework:spring-jdbc:2.5.6'
+	compile 'org.springframework:spring-webmvc-struts:2.5.6'
+
+  compile 'net.sourceforge.jtds:jtds:1.2.7'
+	compile 'commons-dbcp:commons-dbcp:1.4'
+	compile 'commons-beanutils:commons-beanutils:1.8.1'
+	compile 'commons-collections:commons-collections:3.2.1'
+	compile 'javax.servlet:jstl:1.2'
+	compile 'taglibs:standard:1.1.2'
+	compile 'log4j:log4j:1.2.17'
+	compile 'com.google.guava:guava:13.0.1'
+  compile 'aspectj:aspectjweaver:1.5.3'
+
+	providedCompile 'javax.servlet:servlet-api:2.5'
+
+	testCompile 'junit:junit:4.4'
+	testCompile 'org.springframework:spring-test:2.5.6'
+}
+
+
+tasks.withType (AbstractCompile).each {
+	encoding it.options
+}
+
+
+task gitignore << {
+	def pName = project.properties.group.tokenize('.')[0]
+	def extra = "!src/*/*/$pName\n"
+	ant.echo ('preparing .gitignore file')
+	def gitignoreFile = $/
+# for java
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# for idea
+*.iml
+*.ipr
+*.iws
+.idea/
+out/
+
+# for gradle
+.gradle
+target/
+build/
+.gradletasknamecache
+
+# for git
+
+# for project
+/$
+	def contents = "${gitignoreFile}${pName}/\n${extra}"
+	new File('.gitignore').write(contents, 'UTF-8')
+}
+
+task showPath << {
+	project.configurations.each {
+		println it.name
+		println it.asPath
+	}
+}
+
+
+
+// Helper methods to get the directory in which to deploy webapps (add-ons).
+File getDeployLoc() { 
+	file("$buildDir/"+war.baseName.toLowerCase())
+}
+
+
+idea {
+  project {
+    //if you want to set specific jdk and language level
+    rootProject.afterEvaluate {
+       jdkName = "${rootProject.sourceCompatibility}"
+       languageLevel = "${rootProject.sourceCompatibility}"
+    }
+
+    ipr.withXml {
+      def node = it.asNode()
+
+      def vcsConfig = node.component.find { it.'@name' == 'VcsDirectoryMappings' }
+      vcsConfig.mapping[0].'@vcs' = 'Git'
+
+      def mgrNode = node.component.find { it.'@name' == 'ArtifactManager' }
+      if (!mgrNode)
+         mgrNode = node.appendNode('component', [name: 'ArtifactManager'])
+
+      def webNode = mgrNode?.artifact.find { it.'@name' == 'Web exploded' }
+      if (webNode)
+        mgrNode.remove(webNode)
+
+      mgrNode.append(new XmlParser().parseText("""
+        <artifact type="exploded-war" build-on-make="true" name="Web exploded">
+          <output-path>${pathFactory.relativePath('PROJECT_DIR', getDeployLoc()).relPath}</output-path>
+          <root id="root">
+            <element id="javaee-facet-resources" facet="${war.baseName}/web/Web" />
+            <element id="directory" name="WEB-INF">
+              <element id="directory" name="classes">
+                <element id="module-output" name="${war.baseName.toLowerCase()}" />
+              </element>
+              <element id="directory" name="lib" />
+            </element>
+          </root>
+        </artifact>
+      """))
+      def libNode = mgrNode.artifact.root.element.find { it.'@name' == 'WEB-INF' }.element.find { it.'@name' == 'lib' }
+      def userHome = new File(System.getProperty("user.home"))
+      modules[0].resolveDependencies().each { dep ->
+        if (dep instanceof org.gradle.plugins.ide.idea.model.ModuleLibrary){
+          if (dep.scope == 'COMPILE' || dep.scope == 'RUNTIME')
+            dep.classes.each {
+              libNode.appendNode('element', [id: 'file-copy', path: pathFactory.relativePath(userHome, '$USER_HOME$', it.file).relPath])
+            }
+        }
+      }
+    }
+  }
+
+  module {
+    scopes.PROVIDED.plus += configurations.providedCompile
+    scopes.PROVIDED.plus += configurations.providedRuntime
+    scopes.COMPILE.minus += configurations.providedCompile
+    scopes.RUNTIME.minus += configurations.providedRuntime
+
+    inheritOutputDirs = false
+    outputDir = file("$buildDir/classes/main")
+    testOutputDir = file("$buildDir/classes/test")
+
+    iml.withXml {
+      def node = it.asNode()
+
+      def mgrNode = node.component.find { it.'@name' == 'FacetManager' }
+      if (!mgrNode)
+         mgrNode = node.appendNode('component', [name: 'FacetManager'])
+      def webNode = mgrNode?.facet.find { it.'@name' == 'Web' }
+      if (webNode)
+        mgrNode.remove(webNode)
+
+      mgrNode.append(new XmlParser().parseText('''
+        <facet type="web" name="Web">
+          <configuration>
+            <descriptors>
+              <deploymentDescriptor name="web.xml" url="file://$MODULE_DIR$/src/main/webapp/WEB-INF/web.xml"/>
+            </descriptors>
+            <webroots>
+              <root url="file://$MODULE_DIR$/src/main/webapp" relative="/"/>
+            </webroots>
+            <sourceRoots>
+              <root url="file://$MODULE_DIR$/src/main/resources"/>
+              <root url="file://$MODULE_DIR$/src/main/java"/>
+            </sourceRoots>
+          </configuration>
+        </facet>
+      '''))
+    }
+  }
+}

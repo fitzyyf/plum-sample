@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd"
+	   default-autowire="byName">
+	<context:annotation-config/>
+	<!-- 启动Spring 注解扫描 -->
+	<context:component-scan base-package="jasperreport.daos,jasperreport.services"/>
+	<!-- Scans within the base package of the application for @Components to configure as beans -->
+	<bean id="placeholderConfig"
+		  class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location" value="classpath:db.properties"/>
+	</bean>
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${database.driver}"/>
+		<property name="url" value="${database.url}"/>
+		<property name="username" value="${database.username}"/>
+		<property name="password" value="${database.password}"/>
+		<property name="validationQuery" value="SELECT 1"/>
+		<property name="testWhileIdle" value="true"/>
+		<property name="timeBetweenEvictionRunsMillis" value="3600000"/>
+		<property name="minEvictableIdleTimeMillis" value="1800000"/>
+		<property name="testOnBorrow" value="true"/>
+		<property name="maxActive" value="200"/>
+		<property name="initialSize" value="100"/>
+		<property name="maxWait" value="60000"/>
+		<property name="maxIdle" value="20"/>
+		<property name="minIdle" value="3"/>
+	</bean>
+
+	<!-- 定义事务处理类，不同的数据访问方式，事务处理类不同
+			比如：Hibernate操作的HibernateTransactionManager，JDBC操作的使用DataSourceTransactionManager
+		 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"/>
+	</bean>
+
+
+	<!-- 定义事务通知 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<!-- 定义方法的过滤规则 -->
+		<tx:attributes>
+			<!-- 所有方法都使用事务 -->
+			<tx:method name="*" propagation="REQUIRED" rollback-for="java.lang.RuntimeException"/>
+			<!-- 定义所有get开头的方法都是只读的 -->
+			<tx:method name="find*" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 定义AOP配置 -->
+	<aop:config>
+		<!-- 定义一个切入点 -->
+		<aop:pointcut expression="execution (* jasperreport.services.*.*(..))" id="services"/>
+		<!-- 对切入点和事务的通知，进行适配 -->
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="services"/>
+	</aop:config>
+</beans>
