@@ -1,0 +1,246 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'war'
+apply plugin: 'eclipse-wtp'
+apply plugin: 'idea'
+apply plugin: 'jetty'
+
+defaultTasks 'clean', 'build'
+
+group = 'org.yfyang.osy'
+version = '1.0'
+archivesBaseName = 'spring-webmvc-dwr'
+buildDir = 'target'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+
+ext.isSnapshot = version.endsWith("-SNAPSHOT")
+
+def encoding = {it.encoding = 'UTF-8'}
+
+
+httpPort = 3000
+stopPort = 9451
+stopKey = 'foo'
+
+configurations {
+    provided
+}
+
+sourceSets {
+    main {
+        compileClasspath += configurations.provided
+    }
+    test {
+        compileClasspath += configurations.provided
+        runtimeClasspath += configurations.provided 
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+def library(lib, v) {
+    String.format(lib, versions[v]);
+}
+
+// 定义 依赖和版本的变量
+libraries=[:]
+versions=[:]
+
+// 设置版本信息
+versions['spring'] = '3.2.0.RELEASE'
+versions['plum'] = '1.0-SNAPSHOT'
+versions['druid'] = '0.2.10'
+versions['mybatis'] = '3.1.1'
+versions['mybatis-spring'] = '1.1.1'
+versions['mybatis-ehcache'] = '1.0.1'
+versions['shiro'] = '1.2.1'
+
+// 设置依赖信息
+libraries['asm'] = 'asm:asm:3.3.1'
+libraries['cglib'] = 'cglib:cglib:2.2.2'
+libraries['dom4j'] = 'dom4j:dom4j:1.6.1'
+libraries['javassist'] = 'javassist:javassist:3.12.1.GA'
+libraries['ehcache'] = 'net.sf.ehcache:ehcache-core:2.6.2'
+libraries['aspectjrt'] = 'org.aspectj:aspectjrt:1.7.1'
+libraries['aspectjweaver'] = 'org.aspectj:aspectjweaver:1.7.1'
+libraries['inject'] = 'javax.inject:javax.inject:1'
+libraries['commons-fileupload'] = 'commons-fileupload:commons-fileupload:1.2.2'
+libraries['commons-io']='commons-io:commons-io:2.4'
+libraries['commons-lang3'] = 'org.apache.commons:commons-lang3:3.1'
+libraries['commons-collections'] = 'commons-collections:commons-collections:3.2.1'
+libraries['commons-codec'] = 'commons-codec:commons-codec:1.7'
+libraries['guava'] = 'com.google.guava:guava:13.0.1'
+libraries['joda-time'] ='joda-time:joda-time:2.1'
+libraries['dozer'] ='net.sf.dozer:dozer:5.4.0'
+libraries['dwr'] = 'org.directwebremoting:dwr:3.0.M1'
+
+libraries += [
+    'spring-aop':             library('org.springframework:spring-aop:%s',             'spring'),
+    'spring-aspects':         library('org.springframework:spring-aspects:%s',         'spring'),
+    'spring-beans':           library('org.springframework:spring-beans:%s',           'spring'),
+    'spring-core':            library('org.springframework:spring-core:%s',            'spring'),
+    'spring-context':         library('org.springframework:spring-context:%s',         'spring'),
+    'spring-context-support': library('org.springframework:spring-context-support:%s', 'spring'),
+    'spring-expression':      library('org.springframework:spring-expression:%s',      'spring'),
+    'spring-jdbc':            library('org.springframework:spring-jdbc:%s',            'spring'),
+    'spring-orm':             library('org.springframework:spring-orm:%s',             'spring'),
+    'spring-tx':              library('org.springframework:spring-tx:%s',              'spring'),
+    'spring-web':             library('org.springframework:spring-web:%s',             'spring'),
+    'spring-webmvc':          library('org.springframework:spring-webmvc:%s',          'spring'),
+]
+//MongoDB Jdbc Driver
+libraries['mongo-java-driver'] = 'org.mongodb:mongo-java-driver:2.10.1'
+
+libraries['mail'] = 'javax.mail:mail:1.4.5'
+
+libraries['logback'] ='ch.qos.logback:logback-classic:1.0.9'
+libraries['log4j'] = 'log4j:log4j:1.2.17'
+libraries['jcl-over-slf4j'] = 'org.slf4j:jcl-over-slf4j:1.7.2'
+
+libraries['validation-api'] = 'javax.validation:validation-api:1.0.0.GA'
+libraries['hibernate-validator'] = 'org.hibernate:hibernate-validator:4.3.1.Final'
+
+libraries['freemarker'] = 'org.freemarker:freemarker:2.3.19'
+
+// Database
+libraries['mysql-connector-java'] = 'mysql:mysql-connector-java:5.1.22'
+
+libraries['druid'] = library('com.alibaba:druid:%s','druid')
+libraries['mybatis'] = library('org.mybatis:mybatis:%s','mybatis')
+libraries['mybatis-spring'] = library('org.mybatis:mybatis-spring:%s','mybatis-spring')
+libraries['mybatis-ehcache'] = library('org.mybatis.caches:mybatis-ehcache:%s','mybatis-ehcache')
+
+
+// Json
+libraries['jackson-databind'] = 'com.fasterxml.jackson.core:jackson-databind:2.1.0'
+libraries['jackson-module-jaxb-annotations'] = 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations:2.1.0'
+libraries['jaxb-api'] = 'javax.xml.bind:jaxb-api:2.2.2'
+
+// shiro
+libraries += [
+    'shiro-core'    :   library('org.apache.shiro:shiro-core:%s',   'shiro'),
+    'shiro-spring'  :   library('org.apache.shiro:shiro-spring:%s', 'shiro'),
+    'shiro-web'     :   library('org.apache.shiro:shiro-web:%s',    'shiro'),
+    'shiro-ehcache' :   library('org.apache.shiro:shiro-ehcache:%s','shiro'),
+]
+
+dependencies {
+    libraries.each { k,v ->
+        compile(libraries[k])
+    }
+
+    compile(library('org.yfyang.osy:plum:%s','plum')){
+        exclude(group: 'org.springframework', module: 'spring-asm')
+    }
+
+    // Servlet
+    providedRuntime 'javax.servlet:servlet-api:2.5'
+    providedRuntime 'javax.servlet.jsp:jsp-api:2.1'
+    compile('javax.servlet.jsp.jstl:jstl-api:1.2'){
+         exclude(group: 'javax.el', module: 'el-api')
+    }
+    compile('org.glassfish.web:jstl-impl:1.2'){
+         exclude(group: 'javax.el', module: 'el-api')
+    }
+    //Spring Data
+    compile('org.springframework.data:spring-data-commons-core:1.2.1.RELEASE'){
+        exclude(group: 'org.springframework',module:'spring-core')
+        exclude(group:'org.springframework',module:'spring-beans')
+    }
+    compile('org.springframework.data:spring-data-mongodb:1.0.3.RELEASE'){
+        exclude(group:'org.springframework',module:'spring-expression')
+        exclude(group:'org.springframework',module:'spring-beans')
+    }
+
+
+    // Test
+    testCompile library('org.springframework:spring-test:%s','spring')
+    testCompile 'junit:junit:4.11'
+    // mockito
+    testCompile 'org.mockito:mockito-core:1.9.5'
+    testCompile 'org.powermock:powermock-module-junit4:1.5'
+    testCompile('org.powermock:powermock-api-mockito:1.5'){
+         exclude(group: 'org.mockito', module: 'mockito-all')
+    }
+    //selenium
+    testCompile 'org.seleniumhq.selenium:selenium-java:2.28.0'
+    testCompile 'org.seleniumhq.selenium:selenium-remote-driver:2.28.0'   
+}
+
+idea.module.iml {
+    beforeMerged { module ->
+        module.dependencies.clear()
+    }
+    whenMerged { module ->
+        module.dependencies*.exported = true
+    }
+}
+
+idea.project.ipr {
+    beforeMerged { project ->
+        project.modulePaths.clear()
+    }
+    withXml { provider ->
+        provider.node.component.find { it.@name == 'VcsDirectoryMappings' }.mapping.@vcs = 'Git'
+    }
+}
+
+task init << {
+  [
+    file('src/main/java'),
+    file('src/main/resources'),
+    file('src/main/webapp/WEB-INF'),
+    file('src/test/java'),
+    file('src/test/resources'),
+  ].each { dir ->
+    if (!dir.exists()) {
+      dir.mkdirs()
+    }
+  }
+  def webxml = file('src/main/webapp/WEB-INF/web.xml')
+  def webapp = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<web-app xmlns="http://java.sun.com/xml/ns/javaee"\n' +
+    '         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n' +
+    '         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"\n' +
+    '         version="2.5">\n' +
+    '</web-app>\n'
+  if (!webxml.exists()) {
+    webxml.write(webapp, 'UTF-8')
+  }
+}
+
+/**
+ * Create POM config and return for use by other tasks.
+ */
+def getPomConfiguration() {
+    return {
+        name 'Dybe book'
+        packaging 'war'
+        description 'Dybe book viewer'
+        url 'github'
+        licenses {
+            license {
+                name 'The Apache Software License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+        }
+        developers {
+            developer {
+                id 'poplar yfyang'
+                name 'yfyang'
+                email 'poplar1123@gmail.com'
+            }
+        }
+        scm {
+            connection 'scm:github'
+            developerConnection 'scm:git'
+            url 'git'
+        }
+    }
+}
