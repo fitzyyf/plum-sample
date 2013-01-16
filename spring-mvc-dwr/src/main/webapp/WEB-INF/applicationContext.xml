@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:dwr="http://www.directwebremoting.org/schema/spring-dwr" xmlns:util="http://www.springframework.org/schema/util"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+	   		http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+	   				http://www.directwebremoting.org/schema/spring-dwr http://www.directwebremoting.org/schema/spring-dwr-3.0.xsd
+	   		http://www.springframework.org/schema/context
+	   		http://www.springframework.org/schema/context/spring-context-3.2.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+	<context:property-placeholder location="classpath:application.properties"/>
+	<util:properties id="settings" location="classpath:application.properties" />
+
+	<!-- Activates various annotations to be detected in bean classes -->
+	<context:annotation-config/>
+
+	<!-- Scans the classpath for annotated components that will be auto-registered as Spring beans.
+	 	For example @Controller and @Service. Make sure to set the correct base-package-->
+	<context:component-scan base-package="services"/>
+	<!-- Spring容器中检查拥有@RemoteProxy 和 @RemoteMethod注解的类 -->
+	<dwr:annotation-config id="dwr_as"/>
+
+	<dwr:annotation-scan base-package="services,models" scanDataTransferObject="true" scanRemoteProxy="true"/>
+
+</beans>

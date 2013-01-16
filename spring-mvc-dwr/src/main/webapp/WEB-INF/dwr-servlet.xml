@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:dwr="http://www.directwebremoting.org/schema/spring-dwr"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.directwebremoting.org/schema/spring-dwr http://www.directwebremoting.org/schema/spring-dwr-3.0.xsd">
+
+	<!-- 将util.js和engine.js映射到下面的dwrController -->
+	<dwr:url-mapping />
+
+
+	<!-- debug开启 -->
+	<dwr:controller id="dwrController" debug="true">
+		<!-- 如果有反向Ajax调用 -->
+		<dwr:config-param name="activeReverseAjaxEnabled" value="true" />
+		<!--<dwr:config-param name="pollAndCometEnabled" value="true" />-->
+	</dwr:controller>
+
+	<!-- 启用 annotation 配置模式 -->
+	<dwr:configuration/>
+
+</beans>

@@ -53,7 +53,6 @@ versions=[:]
 
 // 设置版本信息
 versions['spring'] = '3.2.0.RELEASE'
-versions['plum'] = '1.0-SNAPSHOT'
 versions['druid'] = '0.2.10'
 versions['mybatis'] = '3.1.1'
 versions['mybatis-spring'] = '1.1.1'
@@ -77,7 +76,7 @@ libraries['commons-codec'] = 'commons-codec:commons-codec:1.7'
 libraries['guava'] = 'com.google.guava:guava:13.0.1'
 libraries['joda-time'] ='joda-time:joda-time:2.1'
 libraries['dozer'] ='net.sf.dozer:dozer:5.4.0'
-libraries['dwr'] = 'org.directwebremoting:dwr:3.0.M1'
+libraries['dwr'] = 'org.directwebremoting:dwr:3.0.RC2'
 
 libraries += [
     'spring-aop':             library('org.springframework:spring-aop:%s',             'spring'),
@@ -134,9 +133,6 @@ dependencies {
         compile(libraries[k])
     }
 
-    compile(library('org.yfyang.osy:plum:%s','plum')){
-        exclude(group: 'org.springframework', module: 'spring-asm')
-    }
 
     // Servlet
     providedRuntime 'javax.servlet:servlet-api:2.5'
@@ -172,22 +168,99 @@ dependencies {
     testCompile 'org.seleniumhq.selenium:selenium-remote-driver:2.28.0'   
 }
 
-idea.module.iml {
-    beforeMerged { module ->
-        module.dependencies.clear()
-    }
-    whenMerged { module ->
-        module.dependencies*.exported = true
-    }
+// Helper methods to get the directory in which to deploy webapps (add-ons).
+File getDeployLoc() { 
+    file("$buildDir/"+war.baseName.toLowerCase())
 }
 
-idea.project.ipr {
-    beforeMerged { project ->
-        project.modulePaths.clear()
+
+idea {
+  project {
+    //if you want to set specific jdk and language level
+    rootProject.afterEvaluate {
+       jdkName = "${rootProject.sourceCompatibility}"
+       languageLevel = "${rootProject.sourceCompatibility}"
     }
-    withXml { provider ->
-        provider.node.component.find { it.@name == 'VcsDirectoryMappings' }.mapping.@vcs = 'Git'
+
+    ipr.withXml {
+      def node = it.asNode()
+
+      def vcsConfig = node.component.find { it.'@name' == 'VcsDirectoryMappings' }
+      vcsConfig.mapping[0].'@vcs' = 'Git'
+
+      def mgrNode = node.component.find { it.'@name' == 'ArtifactManager' }
+      if (!mgrNode)
+         mgrNode = node.appendNode('component', [name: 'ArtifactManager'])
+
+      def webNode = mgrNode?.artifact.find { it.'@name' == 'Web exploded' }
+      if (webNode)
+        mgrNode.remove(webNode)
+
+      mgrNode.append(new XmlParser().parseText("""
+        <artifact type="exploded-war" build-on-make="true" name="Web exploded">
+          <output-path>${pathFactory.relativePath('PROJECT_DIR', getDeployLoc()).relPath}</output-path>
+          <root id="root">
+            <element id="javaee-facet-resources" facet="${war.baseName}/web/Web" />
+            <element id="directory" name="WEB-INF">
+              <element id="directory" name="classes">
+                <element id="module-output" name="${war.baseName.toLowerCase()}" />
+              </element>
+              <element id="directory" name="lib" />
+            </element>
+          </root>
+        </artifact>
+      """))
+      def libNode = mgrNode.artifact.root.element.find { it.'@name' == 'WEB-INF' }.element.find { it.'@name' == 'lib' }
+      def userHome = new File(System.getProperty("user.home"))
+      modules[0].resolveDependencies().each { dep ->
+        if (dep instanceof org.gradle.plugins.ide.idea.model.ModuleLibrary){
+          if (dep.scope == 'COMPILE' || dep.scope == 'RUNTIME')
+            dep.classes.each {
+              libNode.appendNode('element', [id: 'file-copy', path: pathFactory.relativePath(userHome, '$USER_HOME$', it.file).relPath])
+            }
+        }
+      }
     }
+  }
+
+  module {
+    scopes.PROVIDED.plus += configurations.providedCompile
+    scopes.PROVIDED.plus += configurations.providedRuntime
+    scopes.COMPILE.minus += configurations.providedCompile
+    scopes.RUNTIME.minus += configurations.providedRuntime
+
+    inheritOutputDirs = false
+    outputDir = file("$buildDir/classes/main")
+    testOutputDir = file("$buildDir/classes/test")
+
+    iml.withXml {
+      def node = it.asNode()
+
+      def mgrNode = node.component.find { it.'@name' == 'FacetManager' }
+      if (!mgrNode)
+         mgrNode = node.appendNode('component', [name: 'FacetManager'])
+      def webNode = mgrNode?.facet.find { it.'@name' == 'Web' }
+      if (webNode)
+        mgrNode.remove(webNode)
+
+      mgrNode.append(new XmlParser().parseText('''
+        <facet type="web" name="Web">
+          <configuration>
+            <descriptors>
+              <deploymentDescriptor name="web.xml" url="file://$MODULE_DIR$/src/main/webapp/WEB-INF/web.xml"/>
+            </descriptors>
+            <webroots>
+              <root url="file://$MODULE_DIR$/src/main/webapp" relative="/"/>
+            </webroots>
+            <sourceRoots>
+              <root url="file://$MODULE_DIR$/src/main/resources"/>
+              <root url="file://$MODULE_DIR$/src/main/java"/>
+            </sourceRoots>
+          </configuration>
+        </facet>
+      '''))
+    }
+  }
 }
 
 task init << {
