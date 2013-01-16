@@ -81,7 +81,7 @@ DWR (Direct Web Remoting) 是一个用于改善 Web 页面与 Java 类交互的�
     
 ### DWR配置
 
-1. <dwr:annotation-scan>
+1. `<dwr:annotation-scan>`
 
    定义一些注解扫描的参数：
    
