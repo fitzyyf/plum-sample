@@ -91,23 +91,23 @@ DWR (Direct Web Remoting) 是一个用于改善 Web 页面与 Java 类交互的�
    * scanDataTransferObject：DWR扫描转换器，默认值为 true。
    * scanGlobalFilter-默认值为 true
    
-2. <dwr:url-mapping />
+2. `<dwr:url-mapping />`
 
    要求DWR将util.js和engine.js映射到dwrController，同时可以访问：` /call/**, /interface/**`路径。
    
-3. <dwr:configuration />
+3. `<dwr:configuration />`
 
    用于模仿在 dwr.xml 中可用的配置的行为
    
-4. <dwr:controller id="dwrController" debug="true" />
+4. `<dwr:controller id="dwrController" debug="true" />`
 
    部署时将debug设置为false,debug为true，可以访问`/dwr/index.html`的测试页面。还可以设置以下参数信息
    
-       <dwr:controller id="dwrController" debug="true">
-		    <!-- 如果有反向Ajax调用 -->
-		    <dwr:config-param name="activeReverseAjaxEnabled" value="true" />
-		    <!--<dwr:config-param name="pollAndCometEnabled" value="true" />-->
-	    </dwr:controller>
+           <dwr:controller id="dwrController" debug="true">
+		        <!-- 如果有反向Ajax调用 -->
+		        <dwr:config-param name="activeReverseAjaxEnabled" value="true" />
+		        <!--<dwr:config-param name="pollAndCometEnabled" value="true" />-->
+	        </dwr:controller>
 
    具体可以配置项如下：
    
